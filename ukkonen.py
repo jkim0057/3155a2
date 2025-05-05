@@ -35,19 +35,33 @@ class Ukkonen:
         for i in range(n):
             global_end[0] = i
 
-            child_edge = active_node.edges[ord(text[j])]
-            
-            # Rule 3: no leaf found, create leaf
-            if child_edge is None:
-                leaf = Node(suffix_start_index=j)
-                active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
+            while True: # TODO: not sure (need to loop until i-j is 0?)
+                child_edge = active_node.edges[ord(text[j])]
                 
-                j += 1
-            # Rule 2: corresponding edge found
-            else:
-                # Condition 1: no active edge yet - set the active edge
-                if active_edge is None:
-                    active_edge = child_edge
-                    active_len += 1
-    
+                # Rule 3: no leaf found, create leaf
+                if child_edge is None:
+                    leaf = Node(suffix_start_index=j)
+                    active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
+                    
+                    j += 1
+                # Rule 2: corresponding edge found
+                else:
+                    # Condition 1: no active edge yet - set the active edge
+                    if active_edge is None:
+                        active_edge = child_edge
+                        active_len += 1
+                    # Condition 2: matching characters have gone beyond the active edge
+                    elif active_len == active_edge.end[0] - active_edge.start + 1:
+                        if active_edge.target.edges[ord(text[i])]:
+                            active_node = active_edge.target
+                            active_edge = active_edge.target.edges[ord(text[i])]
+                            active_len = 1
+                        else:
+                            leaf = Node(suffix_start_index=j)
+                            active_edge.target.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
+                            active_len -= 1
+                            j += 1
+                            break
+                    elif text[i] == text[active_edge.start + active_len]:
+                        active_len += 1
         return root

@@ -43,5 +43,11 @@ class Ukkonen:
                 active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
                 
                 j += 1
+            # Rule 2: corresponding edge found
+            else:
+                # Condition 1: no active edge yet - set the active edge
+                if active_edge is None:
+                    active_edge = child_edge
+                    active_len += 1
     
         return root

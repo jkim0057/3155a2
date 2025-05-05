@@ -64,4 +64,27 @@ class Ukkonen:
                             break
                     elif text[i] == text[active_edge.start + active_len]:
                         active_len += 1
+                    elif text[i] != text[active_edge.start + active_len]:
+                        # Rule 2 extension: Perform edge split and jump using link
+                        leaf = Node(suffix_start_index=j)
+                        active_edge.end = active_edge.start + active_len - 1
+                        rear_edge = Edge(target=active_edge.target, start=active_edge.start + active_len, end=active_edge.end)
+                        internal_node = Node()
+                        active_edge.target = internal_node
+                        internal_node.edges[ord(text[active_edge.start + active_len])] = rear_edge
+                        internal_node.edges[i] = Edge(target=leaf, start=i, end=global_end)
+                        
+                        # Internal node created: create link
+                        if prev_internal_node:
+                            prev_internal_node.link = internal_node
+                        else:
+                            internal_node.link = root
+                        prev_internal_node = internal_node
+
+                        if active_node.link:
+                            active_node = active_node.link
+                        else:
+                            j += 1
+                            active_len -= 1
+                            break
         return root

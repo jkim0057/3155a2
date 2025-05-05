@@ -27,6 +27,21 @@ class Ukkonen:
         active_len = 0
         prev_internal_node = None
 
-        # Perform tree generation
+        # Rule 1: expand leaf
+        # Rule 2: branch
+        # Rule 3: exists (create internal node)
+        
+        j = 0
+        for i in range(n):
+            global_end[0] = i
+
+            child_edge = active_node.edges[ord(text[j])]
+            
+            # Rule 3: no leaf found, create leaf
+            if child_edge is None:
+                leaf = Node(suffix_start_index=j)
+                active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
+                
+                j += 1
     
         return root

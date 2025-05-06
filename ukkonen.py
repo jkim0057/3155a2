@@ -1,5 +1,3 @@
-from typing import List
- 
 class Node:
     def __init__(self, suffix_start_index=None) -> None:
         self.edges = [None] * 128
@@ -7,15 +5,30 @@ class Node:
         self.suffix_start_index = suffix_start_index
 
 class Edge:
-    def __init__(self, target: Node, start:int, end:List[int]) -> None:
+    def __init__(self, target: Node, start:int, end, length:int) -> None:
         self.start = start
         self.end = end
         self.target = target
+        self.length = length
 
 class Ukkonen:
     def __init__(self, text:str) -> None:
         self.text = text
         self.suffix_tree = self.generate_suffix_tree(text)
+
+    def print_tree(self):
+        def _print(node, indent=''):
+            for i in range(128):
+                edge = node.edges[i]
+                if edge:
+                    start = edge.start
+                    end = edge.end[0] if isinstance(edge.end, list) else edge.end
+                    label = self.text[start:end + 1]
+                    print(f"{indent}|-- {repr(label)}")
+                    _print(edge.target, indent + '    ')
+        print("Suffix Tree:")
+        _print(self.suffix_tree)
+        print('-' * 40)
 
     def generate_suffix_tree(self, text:str) -> Node:
         n = len(text)
@@ -29,31 +42,37 @@ class Ukkonen:
         # Rule 1: expand leaf
         # Rule 2: branch
         # Rule 3: exists (create internal node)
+        self.suffix_tree = root
         
         j = 0
         for i in range(n):
-            self.print_tree()
-            # Rule 1: expand leaf
             global_end[0] = i
+            self.print_tree()
 
             while i - j + 1 > 0: # TODO: not sure yet
+                self.print_tree()
                 child_edge = active_node.edges[ord(text[j])]
                 
-                # Rule 2: no leaf found, create leaf
+                # Rule 3: no leaf found, create leaf
                 if child_edge is None:
                     leaf = Node(suffix_start_index=j)
-                    active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
+                    active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf, length=global_end[0]-i+1)
                     prev_internal_node = None
                     j += 1
                     break
 
                 else:
+                    if active_edge:
+                        print(active_edge.start)
                     # Condition 1: no active edge yet - set the active edge
                     if active_edge is None:
                         active_edge = child_edge
-                        active_len += 1
+                        active_len = 1
                         prev_internal_node = None
-                        break
+                        if i - j > 0:
+                            continue
+                        else:
+                            break
                     # Condition 2: matching characters have gone beyond the active edge
                     elif active_edge.target.suffix_start_index is None and (active_len == active_edge.end - active_edge.start + 1):
                         if active_edge.target.edges[ord(text[i])]:
@@ -64,26 +83,32 @@ class Ukkonen:
                             break # TODO: need to think here
                         else:
                             leaf = Node(suffix_start_index=j)
-                            active_edge.target.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
+                            active_edge.target.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf, length=global_end[0]-i+1)
                             active_len -= 1
                             j += 1
                             if active_node.link:
                                 active_node = active_node.link
-                            
-                    # Condition 3: one more character matched within the same active edge
+                            active_edge = None
+                            prev_internal_node = None
+                    # Condition 4: one more character matched within the same active edge
                     elif text[i] == text[active_edge.start + active_len]:
-                        active_len += 1
-                        prev_internal_node = None
+                        if active_len > 0:
+                            active_len += 1
+                            prev_internal_node = None
+                            break
+                        else:
+                            active_node = active_edge.target
+                            break
                     elif text[i] != text[active_edge.start + active_len]:
                         # Rule 2 extension: Perform edge split and jump using link
                         leaf = Node(suffix_start_index=j)
-                        rear_edge = Edge(target=active_edge.target, start=active_edge.start + active_len, end=active_edge.end)
+                        rear_edge = Edge(target=active_edge.target, start=active_edge.start + active_len, end=active_edge.end, length=active_edge.start+active_len-i+1)
                         active_edge.end = active_edge.start + active_len - 1
                         
                         internal_node = Node()
                         active_edge.target = internal_node
                         internal_node.edges[ord(text[active_edge.start + active_len])] = rear_edge
-                        internal_node.edges[ord(text[i])] = Edge(target=leaf, start=i, end=global_end)
+                        internal_node.edges[ord(text[i])] = Edge(target=leaf, start=i, end=global_end, length=global_end[0]-i+1)
                         
                         # Internal node created: create link
                         if prev_internal_node:
@@ -95,13 +120,17 @@ class Ukkonen:
 
                         if active_node.link:
                             active_node = active_node.link
-                            j += 1
-                            active_len = 0
                         else:
-                            j += 1
-                            active_len -= 1
-                            continue  
+                            active_node = root
+                        
+                        active_len -= 1
+                        j += 1
+                        active_edge = active_node.edges[ord(text[j])]
+
+                        if active_edge and active_len == 0 and active_edge.length == 1:
+                            active_node = active_node.edges[ord(text[j])].target
         return root
     
 if __name__ == '__main__':
-    ukk = Ukkonen("aabcabc$")
+    ukk = Ukkonen("abcabcca$")
+    ukk.print_tree()

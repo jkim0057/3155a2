@@ -29,10 +29,10 @@ class Ukkonen:
         _print(self.suffix_tree)
         print('-' * 40)
 
-    def isTerminalEdge(self, edge:Edge) -> bool:
+    def is_terminal_edge(self, edge:Edge) -> bool:
         return edge.target.suffix_start_index is not None
     
-    def getLength(self, edge:Edge) -> int:
+    def get_length(self, edge:Edge) -> int:
         len = 0
         if self.isTerminalEdge(edge):
             len = edge.end[0] - edge.start + 1
@@ -49,9 +49,6 @@ class Ukkonen:
         active_edge = None
         active_len = 0
         prev_internal_node = None
-        # Rule 1: expand leaf
-        # Rule 2: branch
-        # Rule 3: exists (create internal node)
         self.suffix_tree = root
         
         j = 0
@@ -59,112 +56,142 @@ class Ukkonen:
             global_end[0] = i
             self.print_tree()
 
-            while i - j + 1 > 0: # TODO: not sure yet
+            while i - j + 1 > 0:
                 self.print_tree()
+                active_edge = active_node.edges[ord(text[i])]
                 if active_len == 0:
-                    child_edge = active_node.edges[ord(text[j])]
-                else:
-                    child_edge = active_edge
-                
-                # Rule 3: no leaf found, create leaf
-                if child_edge is None:
-                    leaf = Node(suffix_start_index=j)
-                    active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
-                    prev_internal_node = None
-                    j += 1
-                    break
-
-                else:
-                    # Condition 1: no active edge yet - set the active edge
                     if active_edge is None:
-                        active_edge = child_edge
-                        active_len = 1
-                        prev_internal_node = None
-                        break
-                        # if i - j > 0:
-                        #     continue
-                        # else:
-                        #     break
-                    # Condition 2: matching characters have gone beyond the active edge
-                    elif active_edge.target.suffix_start_index is None and (active_len == active_edge.end - active_edge.start + 1):
-                        if active_edge.target.edges[ord(text[i])]:
-                            active_node = active_edge.target
-                            active_edge = active_edge.target.edges[ord(text[i])]
-                            active_len = 1
-                            prev_internal_node = None
-                            break # TODO: need to think here
-                        else:
-                            leaf = Node(suffix_start_index=j)
-                            active_edge.target.edges[ord(text[i])] = Edge(start=i, end=global_end, target=leaf)
-                            active_len -= 1
-                            j += 1
-                            if active_node.link:
-                                active_node = active_node.link
-                            active_edge = None
-                            prev_internal_node = None
-                    # Condition 4: one more character matched within the same active edge
-                    elif text[i] == text[active_edge.start + active_len]:
-                        if active_len > 0:
-                            active_len += 1
-                            prev_internal_node = None
-                            break
-                        else:
-                            active_node = active_edge.target
-                            break
-                    elif text[i] != text[active_edge.start + active_len]:
-                        # Rule 2 extension: Perform edge split and jump using link
                         leaf = Node(suffix_start_index=j)
-                        rear_edge = Edge(target=active_edge.target, start=active_edge.start + active_len, end=active_edge.end)
-                        active_edge.end = active_edge.start + active_len - 1
-                        
-                        internal_node = Node()
-                        active_edge.target = internal_node
-                        internal_node.edges[ord(text[active_edge.start + active_len])] = rear_edge
-                        internal_node.edges[ord(text[i])] = Edge(target=leaf, start=i, end=global_end)
-                        
-                        # Internal node created: create link
-                        if prev_internal_node:
-                            prev_internal_node.link = internal_node
-                        internal_node.link = root
-                        prev_internal_node = internal_node
-                        active_edge = None
-
-                        if active_node.link:
-                            active_node = active_node.link
-                        else:
-                            active_len -= 1
-                            active_node = root
-                        
+                        active_node.edges[ord(text[i])] = Edge(leaf, i, global_end)
+                        prev_internal_node = None
                         j += 1
-                        if active_node == root:
-                            active_edge = active_node.edges[ord(text[j])]
-                        else:
-                            active_edge = active_node.edges[ord(text[i-active_len])]
+                        break # TODO: experiment needed (continue?)
+                
+                # A character from the current node is found
+                if active_edge:
+                    pass
+                    # Traverse down to the target character (edge)
+                    # Make other extensions
+                    # Perform edge split 
+                    leaf = Node(suffix_start_index=j)
+                    internal_node = Node()
+                    rear_edge = Edge(internal_node, active_edge.start, active_edge.start + active_len - 1)
+                    active_node.edges[ord(text[rear_edge.start])] = rear_edge
+                    internal_node.edges[ord(text[i])] = Edge(leaf, i, global_end)
+                    active_edge.start += active_len
+                    internal_node.edges[ord(text[active_edge.start])] = active_edge
+                    # Resolve links
+                    if prev_internal_node:
+                        prev_internal_node.link = internal_node
+                    prev_internal_node = internal_node
 
-                        # Skip and count trick
-                        while active_edge and active_len > 0:
-                            edge_length = active_edge.end[0] - active_edge.start + 1 if active_edge.target.suffix_start_index else active_edge.end - active_edge.start + 1
-                            if active_len < edge_length:
-                                # Case 1: edge length is greater, so the active edge must be this
-                                break
-                            elif active_len == edge_length:
-                                # Case 2: edge covered by active_len, update active node only
-                                active_node = active_edge.target
-                                active_len = 0
-                                active_edge = None
-                                break
-                            else:
-                                # Case 3: target exists somewhere beyond the rear node
-                                active_len -= edge_length
-                                active_node = active_edge.target
-                                if active_len > 0:
-                                    active_edge = active_node.edges[ord(text[j + active_edge.start + edge_length])]
-                                else:
-                                    active_edge = None
-                        if active_edge and active_len == 0 and self.getLength(active_edge) == 1:
-                            active_edge = None
+                    # Showstopper?
+                
+                else:
+                    pass
+                
+                # Keep this condition (correct for sure)
+                j += 1
         return root
 
 if __name__ == '__main__':
     ukk = Ukkonen("aabcaba$")
     ukk.print_tree()
+
+                # # Rule 3: no leaf found, create leaf
+                # if child_edge is None:
+                #     leaf = Node(suffix_start_index=j)
+                #     active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
+                #     prev_internal_node = None
+                #     j += 1
+                #     break
+
+                # else:
+                #     # Condition 1: no active edge yet - set the active edge
+                #     if active_edge is None:
+                #         active_edge = child_edge
+                #         active_len = 1
+                #         prev_internal_node = None
+                #         break
+                #         # if i - j > 0:
+                #         #     continue
+                #         # else:
+                #         #     break
+                #     # Condition 2: matching characters have gone beyond the active edge
+                #     elif active_edge.target.suffix_start_index is None and (active_len == active_edge.end - active_edge.start + 1):
+                #         if active_edge.target.edges[ord(text[i])]:
+                #             active_node = active_edge.target
+                #             active_edge = active_edge.target.edges[ord(text[i])]
+                #             active_len = 1
+                #             prev_internal_node = None
+                #             break # TODO: need to think here
+                #         else:
+                #             leaf = Node(suffix_start_index=j)
+                #             active_edge.target.edges[ord(text[i])] = Edge(start=i, end=global_end, target=leaf)
+                #             active_len -= 1
+                #             j += 1
+                #             if active_node.link:
+                #                 active_node = active_node.link
+                #             active_edge = None
+                #             prev_internal_node = None
+                #     # Condition 4: one more character matched within the same active edge
+                #     elif text[i] == text[active_edge.start + active_len]:
+                #         if active_len > 0:
+                #             active_len += 1
+                #             prev_internal_node = None
+                #             break
+                #         else:
+                #             active_node = active_edge.target
+                #             break
+                #     elif text[i] != text[active_edge.start + active_len]:
+                #         # Rule 2 extension: Perform edge split and jump using link
+                #         leaf = Node(suffix_start_index=j)
+                #         rear_edge = Edge(target=active_edge.target, start=active_edge.start + active_len, end=active_edge.end)
+                #         active_edge.end = active_edge.start + active_len - 1
+                        
+                #         internal_node = Node()
+                #         active_edge.target = internal_node
+                #         internal_node.edges[ord(text[active_edge.start + active_len])] = rear_edge
+                #         internal_node.edges[ord(text[i])] = Edge(target=leaf, start=i, end=global_end)
+                        
+                #         # Internal node created: create link
+                #         if prev_internal_node:
+                #             prev_internal_node.link = internal_node
+                #         internal_node.link = root
+                #         prev_internal_node = internal_node
+                #         active_edge = None
+
+                #         if active_node.link:
+                #             active_node = active_node.link
+                #         else:
+                #             active_len -= 1
+                #             active_node = root
+                        
+                #         j += 1
+                #         if active_node == root:
+                #             active_edge = active_node.edges[ord(text[j])]
+                #         else:
+                #             active_edge = active_node.edges[ord(text[i-active_len])]
+
+                #         # Skip and count trick
+                #         while active_edge and active_len > 0:
+                #             edge_length = active_edge.end[0] - active_edge.start + 1 if active_edge.target.suffix_start_index else active_edge.end - active_edge.start + 1
+                #             if active_len < edge_length:
+                #                 # Case 1: edge length is greater, so the active edge must be this
+                #                 break
+                #             elif active_len == edge_length:
+                #                 # Case 2: edge covered by active_len, update active node only
+                #                 active_node = active_edge.target
+                #                 active_len = 0
+                #                 active_edge = None
+                #                 break
+                #             else:
+                #                 # Case 3: target exists somewhere beyond the rear node
+                #                 active_len -= edge_length
+                #                 active_node = active_edge.target
+                #                 if active_len > 0:
+                #                     active_edge = active_node.edges[ord(text[j + active_edge.start + edge_length])]
+                #                 else:
+                #                     active_edge = None
+                #         if active_edge and active_len == 0 and self.getLength(active_edge) == 1:
+                #             active_edge = None

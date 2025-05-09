@@ -1,3 +1,5 @@
+from typing import List
+
 class Node:
     def __init__(self, suffix_start_index=None) -> None:
         self.edges = [None] * 128
@@ -39,7 +41,18 @@ class Ukkonen:
         else:
             len = edge.end - edge.start + 1
         return len
+    
+    def split_edge(self, active_node:Node, active_edge:Edge, active_len:int, i:int, j:int, global_end:List[int]):
+        leaf = Node(suffix_start_index=j)
+        internal_node = Node()
+        rear_edge = Edge(internal_node, active_edge.start, active_edge.start + active_len - 1)
+        active_node.edges[ord(self.text[rear_edge.start])] = rear_edge
+        internal_node.edges[ord(self.text[i])] = Edge(leaf, i, global_end)
+        active_edge.start += active_len
+        internal_node.edges[ord(self.text[active_edge.start])] = active_edge
 
+        return internal_node
+    
     def generate_suffix_tree(self, text:str) -> Node:
         n = len(text)
 
@@ -69,17 +82,10 @@ class Ukkonen:
                 
                 # A character from the current node is found
                 if active_edge:
-                    pass
                     # Traverse down to the target character (edge)
                     # Make other extensions
                     # Perform edge split 
-                    leaf = Node(suffix_start_index=j)
-                    internal_node = Node()
-                    rear_edge = Edge(internal_node, active_edge.start, active_edge.start + active_len - 1)
-                    active_node.edges[ord(text[rear_edge.start])] = rear_edge
-                    internal_node.edges[ord(text[i])] = Edge(leaf, i, global_end)
-                    active_edge.start += active_len
-                    internal_node.edges[ord(text[active_edge.start])] = active_edge
+                    internal_node = self.split_edge(active_node, active_edge, active_len, i, j, global_end)
                     # Resolve links
                     if prev_internal_node:
                         prev_internal_node.link = internal_node

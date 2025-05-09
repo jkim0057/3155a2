@@ -82,7 +82,24 @@ class Ukkonen:
                 
                 # A character from the current node is found
                 if active_edge:
-                    # Traverse down to the target character (edge)
+                    # Skip count trick (traverse down the edge)
+                    edge_len = self.getLength(active_edge)
+                    while active_len >= edge_len:
+                        active_node = active_edge.target
+                        active_len -= edge_len
+                        active_edge = active_node.edges[ord(text[j])]
+                        # Case 1: no character found after a node
+                        if active_edge is None:
+                            leaf = Node(suffix_start_index=j)
+                            active_node.edges[ord(text[i])] = Edge(leaf, i, global_end)
+                            prev_internal_node = None
+                            j += 1
+                            break
+                        # Case 2: exact node found with no remainder - set active_node only
+                        if active_len == 0:
+                            active_edge = active_node.edges[ord(text[i])]
+                            break
+
                     # Make other extensions
                     # Perform edge split 
                     internal_node = self.split_edge(active_node, active_edge, active_len, i, j, global_end)

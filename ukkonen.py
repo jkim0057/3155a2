@@ -5,11 +5,10 @@ class Node:
         self.suffix_start_index = suffix_start_index
 
 class Edge:
-    def __init__(self, target: Node, start:int, end, length:int) -> None:
+    def __init__(self, target: Node, start:int, end) -> None:
         self.start = start
         self.end = end
         self.target = target
-        self.length = length
 
 class Ukkonen:
     def __init__(self, text:str) -> None:
@@ -29,6 +28,17 @@ class Ukkonen:
         print("Suffix Tree:")
         _print(self.suffix_tree)
         print('-' * 40)
+
+    def isTerminalEdge(self, edge:Edge) -> bool:
+        return edge.target.suffix_start_index is not None
+    
+    def getLength(self, edge:Edge) -> int:
+        len = 0
+        if self.isTerminalEdge(edge):
+            len = edge.end[0] - edge.start + 1
+        else:
+            len = edge.end - edge.start + 1
+        return len
 
     def generate_suffix_tree(self, text:str) -> Node:
         n = len(text)
@@ -59,7 +69,7 @@ class Ukkonen:
                 # Rule 3: no leaf found, create leaf
                 if child_edge is None:
                     leaf = Node(suffix_start_index=j)
-                    active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf, length=global_end[0]-i+1)
+                    active_node.edges[ord(text[j])] = Edge(start=i, end=global_end, target=leaf)
                     prev_internal_node = None
                     j += 1
                     break
@@ -85,7 +95,7 @@ class Ukkonen:
                             break # TODO: need to think here
                         else:
                             leaf = Node(suffix_start_index=j)
-                            active_edge.target.edges[ord(text[i])] = Edge(start=i, end=global_end, target=leaf, length=global_end[0]-i+1)
+                            active_edge.target.edges[ord(text[i])] = Edge(start=i, end=global_end, target=leaf)
                             active_len -= 1
                             j += 1
                             if active_node.link:
@@ -104,13 +114,13 @@ class Ukkonen:
                     elif text[i] != text[active_edge.start + active_len]:
                         # Rule 2 extension: Perform edge split and jump using link
                         leaf = Node(suffix_start_index=j)
-                        rear_edge = Edge(target=active_edge.target, start=active_edge.start + active_len, end=active_edge.end, length=active_edge.start+active_len-i+1)
+                        rear_edge = Edge(target=active_edge.target, start=active_edge.start + active_len, end=active_edge.end)
                         active_edge.end = active_edge.start + active_len - 1
                         
                         internal_node = Node()
                         active_edge.target = internal_node
                         internal_node.edges[ord(text[active_edge.start + active_len])] = rear_edge
-                        internal_node.edges[ord(text[i])] = Edge(target=leaf, start=i, end=global_end, length=global_end[0]-i+1)
+                        internal_node.edges[ord(text[i])] = Edge(target=leaf, start=i, end=global_end)
                         
                         # Internal node created: create link
                         if prev_internal_node:
@@ -151,7 +161,7 @@ class Ukkonen:
                                     active_edge = active_node.edges[ord(text[j + active_edge.start + edge_length])]
                                 else:
                                     active_edge = None
-                        if active_edge and active_len == 0 and active_edge.length == 1:
+                        if active_edge and active_len == 0 and self.getLength(active_edge) == 1:
                             active_edge = None
         return root
 

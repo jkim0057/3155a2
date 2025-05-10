@@ -36,7 +36,7 @@ class Ukkonen:
     
     def get_length(self, edge:Edge) -> int:
         len = 0
-        if self.isTerminalEdge(edge):
+        if self.is_terminal_edge(edge):
             len = edge.end[0] - edge.start + 1
         else:
             len = edge.end - edge.start + 1
@@ -83,24 +83,29 @@ class Ukkonen:
                 # A character from the current node is found
                 if active_edge:
                     # Skip count trick (traverse down the edge)
-                    edge_len = self.getLength(active_edge)
+                    edge_len = self.get_length(active_edge)
+
+                    new_leaf_created = False
                     while active_len >= edge_len:
                         active_node = active_edge.target
                         active_len -= edge_len
-                        active_edge = active_node.edges[ord(text[j])]
+                        active_edge = active_node.edges[ord(text[i - active_len])]
                         # Case 1: no character found after a node
                         if active_edge is None:
                             leaf = Node(suffix_start_index=j)
                             active_node.edges[ord(text[i])] = Edge(leaf, i, global_end)
                             prev_internal_node = None
                             j += 1
+                            new_leaf_created = True
                             break
                         # Case 2: exact node found with no remainder - set active_node only
                         if active_len == 0:
                             active_edge = active_node.edges[ord(text[i])]
                             break
 
-                    # Make other extensions
+                    if new_leaf_created:
+                        continue
+
                     # Perform edge split 
                     internal_node = self.split_edge(active_node, active_edge, active_len, i, j, global_end)
                     # Resolve links
@@ -108,12 +113,31 @@ class Ukkonen:
                         prev_internal_node.link = internal_node
                     prev_internal_node = internal_node
 
-                    # Showstopper?
-                
+                    # Rule 3: character found after traversal
+                    if active_edge is not None and text[i] == text[active_edge.start + active_len]:
+                        active_len += 1
+                        prev_internal_node = None
+                        break
                 else:
-                    pass
+                    pass # TODO: what to do when edge is not found?
+
+                # At internal node and link found - jump using link
+                if active_node != root and active_node.link is not None:
+                    active_node = active_node.link
+                # At internal node and link not found - go back to root
+                elif active_node != root and active_node.link is None:
+                    active_node = root
+                # Still at root and active_len still remains - decrement active_len
+                elif active_node == root and active_len > 0:
+                    active_len -= 1
+
+                # Active length all consumed
+                if active_len == 0:
+                    active_edge = None
+                # Still has active length to remove - set active edge
+                else:
+                    active_edge = active_node.edges[ord(text[j])]
                 
-                # Keep this condition (correct for sure)
                 j += 1
         return root
 

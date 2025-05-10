@@ -165,8 +165,31 @@ class Ukkonen:
 class A2Solver:
     def __init__(self, texts: List[str], patterns: List[str]):
         self.texts = texts
-        self.patterns = patterns
         self.text_trees = [Ukkonen(text) for text in self.texts]
+        self.patterns = patterns
+
+    def calculate_dl_distance(self, text_index: int, pattern_index: int) -> int:
+        text_tree = self.text_trees[text_index]
+        pattern = self.patterns[pattern_index]
+        dl_distance = 0
+
+        prev_match_count = 0
+        unmatch_counter = 0
+        while unmatch_counter <= 3:
+            pattern = pattern[prev_match_count:]
+            match_count = text_tree.traverse_and_check_matches(pattern)
+            if match_count < len(pattern):
+                unmatch_counter += 1
+                prev_match_count = match_count
+            else:
+                break
+        if unmatch_counter > 3:
+            dl_distance = -1
+        elif unmatch_counter > 0:
+            dl_distance = 1
+        else:
+            dl_distance = 0
+        return dl_distance
 
 def read_all(config_file_path: str):
     f = open(config_file_path, 'r')
@@ -200,8 +223,9 @@ def read_all(config_file_path: str):
 
 if __name__ == '__main__':
     texts, patterns = read_all('run-configuration')
-    # solver = A2Solver(texts, patterns)
-    # print(solver.text_trees)
+    solver = A2Solver(texts, patterns)
+    print(solver.calculate_dl_distance(0, 1))
 
-    ukk = Ukkonen("aabcaba")
-    print(ukk.traverse_and_check_matches("aabcac"))
+
+    # ukk = Ukkonen("aabcaba")
+    # print(ukk.traverse_and_check_matches("aabcac"))

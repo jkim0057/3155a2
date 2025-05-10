@@ -54,6 +54,29 @@ class Ukkonen:
 
         return internal_node
     
+    def traverse_and_check_matches(self, given_text: str) -> int:
+        i = 0
+        past_edge_length = 0
+        n = len(given_text)
+        if i >= n:
+            return 0
+        current_edge = self.suffix_tree.edges[ord(given_text[i])]
+        if not current_edge:
+            return 0
+        while i < n and self.text[current_edge.start + (i - past_edge_length)] == given_text[i]:
+            current_edge_length = self.get_length(current_edge)
+            if (i - past_edge_length + 1) == current_edge_length:
+                past_edge_length += current_edge_length
+                if i + 1 < n:
+                    next_edge = current_edge.target.edges[ord(given_text[i + 1])]
+                    if next_edge:
+                        current_edge = next_edge
+                    else:
+                        i += 1
+                        break
+            i += 1
+        return i
+    
     def generate_suffix_tree(self, text:str) -> Node:
         n = len(text)
 
@@ -139,6 +162,12 @@ class Ukkonen:
                 j += 1
         return root
 
+class A2Solver:
+    def __init__(self, texts: List[str], patterns: List[str]):
+        self.texts = texts
+        self.patterns = patterns
+        self.text_trees = [Ukkonen(text) for text in self.texts]
+
 def read_all(config_file_path: str):
     f = open(config_file_path, 'r')
     lines = f.readlines()
@@ -157,19 +186,22 @@ def read_all(config_file_path: str):
         text_filename = config_content[t].split(" ")[1]
         ft = open(text_filename)
         content = ft.readlines()
-        texts.append(content)
+        texts.append(content[0])
         ft.close()
 
     for p in range(text_file_count, text_file_count + pattern_file_count):
         pattern_filename = config_content[p].split(" ")[1]
         fp = open(pattern_filename)
         content = fp.readlines()
-        patterns.append(content)
+        patterns.append(content[0])
         fp.close()
 
     return texts, patterns
 
 if __name__ == '__main__':
     texts, patterns = read_all('run-configuration')
-    print(texts)
-    print(patterns)
+    # solver = A2Solver(texts, patterns)
+    # print(solver.text_trees)
+
+    ukk = Ukkonen("aabcaba")
+    print(ukk.traverse_and_check_matches("aabcac"))

@@ -1,4 +1,5 @@
 from typing import List
+import sys
 
 class Node:
     def __init__(self, suffix_start_index=None) -> None:
@@ -138,6 +139,37 @@ class Ukkonen:
                 j += 1
         return root
 
+def read_all(config_file_path: str):
+    f = open(config_file_path, 'r')
+    lines = f.readlines()
+
+    for i in range(len(lines)):
+        lines[i] = lines[i].strip()
+    f.close()
+
+    texts, patterns = [], []
+    config_content = lines
+    file_counts = config_content[0].split(" ")
+    text_file_count, pattern_file_count = int(file_counts[0]), int(file_counts[1])
+    config_content = config_content[1:]
+
+    for t in range(text_file_count):
+        text_filename = config_content[t].split(" ")[1]
+        ft = open(text_filename)
+        content = ft.readlines()
+        texts.append(content)
+        ft.close()
+
+    for p in range(text_file_count, text_file_count + pattern_file_count):
+        pattern_filename = config_content[p].split(" ")[1]
+        fp = open(pattern_filename)
+        content = fp.readlines()
+        patterns.append(content)
+        fp.close()
+
+    return texts, patterns
+
 if __name__ == '__main__':
-    ukk = Ukkonen("aabbbabbabbabbbaabba$")
-    ukk.print_tree()
+    texts, patterns = read_all('run-configuration')
+    print(texts)
+    print(patterns)

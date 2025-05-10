@@ -172,20 +172,36 @@ class A2Solver:
         text_tree = self.text_trees[text_index]
         pattern = self.patterns[pattern_index]
         dl_distance = 0
+        
+        # TODO: add attribute 'rank' to root's adjacent edge (index)
+        # Check one-by-one:
+        # 1. Add: +1 rank and check if there is a path with new path
+        # 2. Delete: pat[1:] and check if there is a path starting from +1 rank entrance
+        # 3. Swap: apply the below
+        # 4. Replace: assume whatever mismatched from text exists and run it again
 
         prev_match_count = 0
         unmatch_counter = 0
-        while unmatch_counter <= 3:
+        swap_condition = False
+        while unmatch_counter <= 2:
             pattern = pattern[prev_match_count:]
             match_count = text_tree.traverse_and_check_matches(pattern)
             if match_count < len(pattern):
+                # Check if this unmatch is due to 'swap' condition
+                pattern_swapped = pattern[0:match_count] + pattern[match_count + 1] + pattern[match_count] + pattern[match_count + 2:]
+                if text_tree.traverse_and_check_matches(pattern_swapped) == len(pattern):
+                    swap_condition = True
+                    break
                 unmatch_counter += 1
-                prev_match_count = match_count
+                if match_count <= 2:
+                    prev_match_count += 1
+                else:
+                    prev_match_count = match_count
             else:
                 break
-        if unmatch_counter > 3:
+        if unmatch_counter > 1:
             dl_distance = -1
-        elif unmatch_counter > 0:
+        elif swap_condition or unmatch_counter > 0:
             dl_distance = 1
         else:
             dl_distance = 0

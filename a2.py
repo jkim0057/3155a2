@@ -58,6 +58,7 @@ class Ukkonen:
         i = 0
         past_edge_length = 0
         n = len(given_text)
+
         if i >= n:
             return 0
         current_edge = self.suffix_tree.edges[ord(given_text[i])]
@@ -166,45 +167,36 @@ class A2Solver:
     def __init__(self, texts: List[str], patterns: List[str]):
         self.texts = texts
         self.text_trees = [Ukkonen(text) for text in self.texts]
+        self.text_trees_rev = [Ukkonen(text[::-1]) for text in self.texts]
         self.patterns = patterns
 
     def calculate_dl_distance(self, text_index: int, pattern_index: int) -> int:
         text_tree = self.text_trees[text_index]
+        text_tree_rev = self.text_trees_rev[text_index]
         pattern = self.patterns[pattern_index]
-        dl_distance = 0
+        pattern_rev = pattern[::-1]        
         
-        # TODO: add attribute 'rank' to root's adjacent edge (index)
-        # Check one-by-one:
-        # 1. Add: +1 rank and check if there is a path with new path
-        # 2. Delete: pat[1:] and check if there is a path starting from +1 rank entrance
-        # 3. Swap: apply the below
-        # 4. Replace: assume whatever mismatched from text exists and run it again
+        dl_distance = -1
+        
+        match_count_left = text_tree.traverse_and_check_matches(pattern)
+        match_count_right = text_tree_rev.traverse_and_check_matches(pattern_rev)
 
-        prev_match_count = 0
-        unmatch_counter = 0
-        swap_condition = False
-        while unmatch_counter <= 2:
-            pattern = pattern[prev_match_count:]
-            match_count = text_tree.traverse_and_check_matches(pattern)
-            if match_count < len(pattern):
-                # Check if this unmatch is due to 'swap' condition
-                pattern_swapped = pattern[0:match_count] + pattern[match_count + 1] + pattern[match_count] + pattern[match_count + 2:]
-                if text_tree.traverse_and_check_matches(pattern_swapped) == len(pattern):
-                    swap_condition = True
-                    break
-                unmatch_counter += 1
-                if match_count <= 2:
-                    prev_match_count += 1
-                else:
-                    prev_match_count = match_count
-            else:
-                break
-        if unmatch_counter > 1:
-            dl_distance = -1
-        elif swap_condition or unmatch_counter > 0:
-            dl_distance = 1
-        else:
+        gap = len(pattern) - (match_count_left + match_count_right)
+        if gap < 0:
             dl_distance = 0
+        elif gap == 1:
+            dl_distance = 1
+        elif gap == 2:
+            swapped_pattern = pattern[0:match_count_left] + pattern[match_count_left + 1] + pattern[match_count_left] + pattern[match_count_left + 2:]
+            if text_tree.traverse_and_check_matches(swapped_pattern) == len(pattern):
+                dl_distance = 1
+        else:
+            dl_distance = -1
+
+        print(match_count_left)
+        print(match_count_right)
+        print(gap)
+
         return dl_distance
 
 def read_all(config_file_path: str):

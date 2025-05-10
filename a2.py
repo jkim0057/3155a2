@@ -8,10 +8,11 @@ class Node:
         self.suffix_start_index = suffix_start_index
 
 class Edge:
-    def __init__(self, target: Node, start:int, end) -> None:
+    def __init__(self, target: Node, start:int, end, start_index_from_text=None) -> None:
         self.start = start
         self.end = end
         self.target = target
+        self.start_index_from_text = start_index_from_text
 
 class Ukkonen:
     def __init__(self, text:str) -> None:
@@ -98,7 +99,7 @@ class Ukkonen:
                     active_edge = active_node.edges[ord(text[i])]
                     if active_edge is None:
                         leaf = Node(suffix_start_index=j)
-                        active_node.edges[ord(text[i])] = Edge(leaf, i, global_end)
+                        active_node.edges[ord(text[i])] = Edge(leaf, i, global_end, i)
                         prev_internal_node = None
                         j += 1
                         continue
@@ -170,7 +171,7 @@ class A2Solver:
         self.text_trees_rev = [Ukkonen(text[::-1]) for text in self.texts]
         self.patterns = patterns
 
-    def calculate_dl_distance(self, text_index: int, pattern_index: int) -> int:
+    def calculate_dl_distance(self, text_index: int, pattern_index: int):
         text_tree = self.text_trees[text_index]
         text_tree_rev = self.text_trees_rev[text_index]
         pattern = self.patterns[pattern_index]
@@ -193,11 +194,12 @@ class A2Solver:
         else:
             dl_distance = -1
 
-        print(match_count_left)
-        print(match_count_right)
-        print(gap)
+        start_char = pattern[0]
+        if match_count_left == 0 and dl_distance == 1:
+            start_char = pattern[1]
+        start_index = text_tree.suffix_tree.edges[ord(start_char)].start_index_from_text
 
-        return dl_distance
+        return start_index, dl_distance
 
 def read_all(config_file_path: str):
     f = open(config_file_path, 'r')

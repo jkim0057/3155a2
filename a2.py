@@ -1,5 +1,4 @@
 from typing import List
-import sys
 
 class Node:
     def __init__(self, suffix_start_index=None, parent_start_index=None) -> None:

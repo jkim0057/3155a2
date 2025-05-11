@@ -185,6 +185,11 @@ class A2Solver:
         gap = len(pattern) - (match_count_left + match_count_right)
         if gap < 0:
             dl_distance = 0
+        elif gap == 0:
+            inserted_char = self.texts[text_index][text_tree.suffix_tree.edges[ord(pattern[0])].start_index_from_text + match_count_left]
+            inserted_pattern = pattern[0:match_count_left] + inserted_char + pattern[match_count_left:]
+            if text_tree.traverse_and_check_matches(inserted_pattern) == len(pattern)+1:
+                dl_distance = 1
         elif gap == 1:
             dl_distance = 1
         elif gap == 2:
@@ -195,7 +200,7 @@ class A2Solver:
             dl_distance = -1
 
         start_char = pattern[0]
-        if match_count_left == 0 and dl_distance == 1:
+        if match_count_left <= 1 and dl_distance == 1:
             start_char = pattern[1]
         start_index = text_tree.suffix_tree.edges[ord(start_char)].start_index_from_text
 

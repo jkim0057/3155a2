@@ -19,20 +19,6 @@ class Ukkonen:
         self.text = text
         self.suffix_tree = self.generate_suffix_tree(text)
 
-    def print_tree(self):
-        def _print(node, indent=''):
-            for i in range(128):
-                edge = node.edges[i]
-                if edge:
-                    start = edge.start
-                    end = edge.end[0] if self.is_terminal_edge(edge) else edge.end
-                    label = self.text[start:end + 1]
-                    print(f"{indent}|-- {repr(label)}")
-                    _print(edge.target, indent + '    ')
-        print("Suffix Tree:")
-        _print(self.suffix_tree)
-        print('-' * 40)
-
     def is_terminal_edge(self, edge:Edge) -> bool:
         return edge.target.suffix_start_index is not None
     
@@ -45,7 +31,7 @@ class Ukkonen:
         return len
     
     def split_edge(self, active_node:Node, active_edge:Edge, active_len:int, i:int, j:int, global_end:List[int]):
-        parent_index = active_node.parent_start_index if active_node.parent_start_index else j
+        parent_index = j
         
         leaf = Node(suffix_start_index=j)
         internal_node = Node(parent_start_index=parent_index)
@@ -57,31 +43,39 @@ class Ukkonen:
 
         return internal_node
     
-    def traverse_and_check_matches(self, given_text: str, return_start_index=False) -> int:
+    def traverse_and_check_matches(self, given_text: str, return_start_index=False):
         i = 0
         past_edge_length = 0
         n = len(given_text)
 
         if i >= n:
-            return 0
+            return (0, 0) if return_start_index else 0
         current_edge = self.suffix_tree.edges[ord(given_text[i])]
         if not current_edge:
+            if return_start_index:
+                return (0, 0)
             return 0
         start_index = None
-        while i < n and self.text[current_edge.start + (i - past_edge_length)] == given_text[i]:
+        while i < n and (
+            given_text[i] == '$' or
+            self.text[current_edge.start + (i - past_edge_length)] == given_text[i]):
             current_edge_length = self.get_length(current_edge)
             if (i - past_edge_length + 1) == current_edge_length:
                 past_edge_length += current_edge_length
                 if i + 1 < n:
                     next_edge = current_edge.target.edges[ord(given_text[i + 1])]
-                    start_index = current_edge.target.parent_start_index if current_edge.target.parent_start_index else None
                     if next_edge:
                         current_edge = next_edge
                     else:
                         i += 1
                         break
             i += 1
-        return i, start_index if return_start_index else i
+
+        if return_start_index:
+            suffix_index = current_edge.target.suffix_start_index
+            start_index = suffix_index if suffix_index else current_edge.target.parent_start_index
+            return i, start_index
+        return i
     
     def generate_suffix_tree(self, text:str) -> Node:
         n = len(text)
@@ -158,7 +152,8 @@ class Ukkonen:
                 jumped = False
                 if active_node != root and active_node.link is not None:
                     active_node = active_node.link
-                    jumped = True
+                    if active_node != root:
+                        jumped = True
                 # At internal node and link not found - go back to root
                 elif active_node != root and active_node.link is None:
                     active_node = root
@@ -191,33 +186,38 @@ class A2Solver:
         start_index = -1
         dl_distance = -1
         
+        start_index = None
         match_count_left, start_index = text_tree.traverse_and_check_matches(pattern, return_start_index=True)
-        match_count_right = text_tree_rev.traverse_and_check_matches(pattern_rev)
+        match_count_right = text_tree_rev.traverse_and_check_matches(pattern_rev, return_start_index=False)
 
         gap = len(pattern) - (match_count_left + match_count_right)
         if gap < 0:
             dl_distance = 0
         elif gap == 0:
-            inserted_char = self.texts[text_index][text_tree.suffix_tree.edges[ord(pattern[0])].start_index_from_text + match_count_left]
-            inserted_pattern = pattern[0:match_count_left] + inserted_char + pattern[match_count_left:]
-            if text_tree.traverse_and_check_matches(inserted_pattern) == len(pattern)+1:
+            inserted_pattern = pattern[0:match_count_left] + '$' + pattern[match_count_left:]
+            new_match_count, start_index = text_tree.traverse_and_check_matches(inserted_pattern, return_start_index=True)
+            if new_match_count == len(pattern)+1:
                 dl_distance = 1
         elif gap == 1:
-            dl_distance = 1
+            deleted_pattern = pattern[0:match_count_left] + pattern[match_count_left + 1:] 
+            new_match_count, start_index = text_tree.traverse_and_check_matches(deleted_pattern, return_start_index=True)
+            if new_match_count == len(deleted_pattern):
+                dl_distance = 1
+                return start_index, dl_distance
+            
+            substituted_pattern = pattern[0:match_count_left] + '$' + pattern[match_count_left + 1:] 
+            new_match_count, start_index = text_tree.traverse_and_check_matches(substituted_pattern, return_start_index=True)
+            if new_match_count == len(substituted_pattern):
+                dl_distance = 1
+                return start_index, dl_distance
+
         elif gap == 2:
             swapped_pattern = pattern[0:match_count_left] + pattern[match_count_left + 1] + pattern[match_count_left] + pattern[match_count_left + 2:]
-            if text_tree.traverse_and_check_matches(swapped_pattern) == len(pattern):
+            new_match_count, start_index = text_tree.traverse_and_check_matches(swapped_pattern, return_start_index=True)
+            if new_match_count == len(pattern):
                 dl_distance = 1
         else:
             dl_distance = -1
-
-
-
-        # start_char = pattern[0]
-        # if match_count_left <= 1 and dl_distance == 1:
-        #     start_char = pattern[1]
-        # if dl_distance != -1:
-        #     start_index = text_tree.suffix_tree.edges[ord(start_char)].start_index_from_text
 
         return start_index, dl_distance
     
@@ -263,9 +263,9 @@ def read_all(config_file_path: str):
 def write_to_file(result_file_path: str, content: List[List[int]]):
     f = open(result_file_path, 'w')
     for result in content:
-        pattern_number = str(result[0])
-        text_number = str(result[1])
-        position_of_occurence = str(result[2])
+        pattern_number = str(result[0] + 1)
+        text_number = str(result[1] + 1)
+        position_of_occurence = str((result[2] if result[2] else 0) + 1)
         dl_distance = str(result[3])
         f.write(pattern_number + " " + text_number + " " + position_of_occurence + " " + dl_distance + "\n")
     f.close()
@@ -273,8 +273,5 @@ def write_to_file(result_file_path: str, content: List[List[int]]):
 if __name__ == '__main__':
     texts, patterns = read_all('run-configuration')
     solver = A2Solver(texts, patterns)
-    # compute_result = solver.compute_dl_for_all_pairs()
-    # write_to_file("output_a2.txt", compute_result)
-
-    print(solver.calculate_dl_distance(1, 1))
-    # solver.text_trees_rev[1].print_tree()
+    compute_result = solver.compute_dl_for_all_pairs()
+    write_to_file("output_a2.txt", compute_result)

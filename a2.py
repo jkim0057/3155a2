@@ -177,6 +177,7 @@ class A2Solver:
         pattern = self.patterns[pattern_index]
         pattern_rev = pattern[::-1]        
         
+        start_index = -1
         dl_distance = -1
         
         match_count_left = text_tree.traverse_and_check_matches(pattern)
@@ -202,12 +203,19 @@ class A2Solver:
         start_char = pattern[0]
         if match_count_left <= 1 and dl_distance == 1:
             start_char = pattern[1]
-        start_index = text_tree.suffix_tree.edges[ord(start_char)].start_index_from_text
+        if dl_distance != -1:
+            start_index = text_tree.suffix_tree.edges[ord(start_char)].start_index_from_text
 
         return start_index, dl_distance
     
-    def compute_dl_for_all_files(self):
-        pass
+    def compute_dl_for_all_pairs(self) -> List[List[int]]:
+        result = []
+        for t in range(len(texts)):
+            for p in range(len(patterns)):
+                start_index, dl_distance = self.calculate_dl_distance(t, p)
+                if dl_distance != -1:
+                    result.append([p, t, start_index, dl_distance])
+        return result
 
 def read_all(config_file_path: str):
     f = open(config_file_path, 'r')
@@ -239,11 +247,20 @@ def read_all(config_file_path: str):
 
     return texts, patterns
 
+def write_to_file(result_file_path: str, content: List[List[int]]):
+    f = open(result_file_path, 'w')
+    for result in content:
+        pattern_number = str(result[0])
+        text_number = str(result[1])
+        position_of_occurence = str(result[2])
+        dl_distance = str(result[3])
+        f.write(pattern_number + " " + text_number + " " + position_of_occurence + " " + dl_distance + "\n")
+    f.close()
+
 if __name__ == '__main__':
     texts, patterns = read_all('run-configuration')
     solver = A2Solver(texts, patterns)
-    print(solver.calculate_dl_distance(0, 1))
-
-
+    compute_result = solver.compute_dl_for_all_pairs()
+    write_to_file("output_a2.txt", compute_result)
     # ukk = Ukkonen("aabcaba")
     # print(ukk.traverse_and_check_matches("aabcac"))

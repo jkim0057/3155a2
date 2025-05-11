@@ -19,20 +19,6 @@ class Ukkonen:
         self.text = text
         self.suffix_tree = self.generate_suffix_tree(text)
 
-    def print_tree(self):
-        def _print(node, indent=''):
-            for i in range(128):
-                edge = node.edges[i]
-                if edge:
-                    start = edge.start
-                    end = edge.end[0] if isinstance(edge.end, list) else edge.end
-                    label = self.text[start:end + 1]
-                    print(f"{indent}|-- {repr(label)}")
-                    _print(edge.target, indent + '    ')
-        print("Suffix Tree:")
-        _print(self.suffix_tree)
-        print('-' * 40)
-
     def is_terminal_edge(self, edge:Edge) -> bool:
         return edge.target.suffix_start_index is not None
     
@@ -92,13 +78,11 @@ class Ukkonen:
         
         j = 0
         for i in range(n):
-            self.print_tree()
             global_end[0] = i
 
             while i - j + 1 > 0:
                 if n-1 == i == j:
                     return root
-                self.print_tree()
                 if active_len == 0:
                     active_edge = active_node.edges[ord(text[i])]
                     if active_edge is None:
@@ -117,7 +101,7 @@ class Ukkonen:
                     while active_len >= edge_len:
                         active_node = active_edge.target
                         active_len -= edge_len
-                        active_edge = active_node.edges[ord(text[i - active_len])]
+                        active_edge = active_node.edges[ord(text[j])]
                         # Case 1: no character found after a node
                         if active_edge is None:
                             leaf = Node(suffix_start_index=j)
@@ -152,8 +136,10 @@ class Ukkonen:
                     prev_internal_node = internal_node
 
                 # At internal node and link found - jump using link
+                jumped = False
                 if active_node != root and active_node.link is not None:
                     active_node = active_node.link
+                    jumped = True
                 # At internal node and link not found - go back to root
                 elif active_node != root and active_node.link is None:
                     active_node = root
@@ -166,7 +152,7 @@ class Ukkonen:
                     active_edge = None
                 # Still has active length to remove - set active edge
                 else:
-                    active_edge = active_node.edges[ord(text[i - active_len])]
+                    active_edge = active_node.edges[ord(text[j + 2 if jumped else j + 1])]
                 j += 1
         return root
 
@@ -216,8 +202,8 @@ class A2Solver:
     
     def compute_dl_for_all_pairs(self) -> List[List[int]]:
         result = []
-        for t in range(len(texts)):
-            for p in range(len(patterns)):
+        for t in range(len(self.texts)):
+            for p in range(len(self.patterns)):
                 start_index, dl_distance = self.calculate_dl_distance(t, p)
                 if dl_distance != -1:
                     result.append([p, t, start_index, dl_distance])
@@ -264,11 +250,7 @@ def write_to_file(result_file_path: str, content: List[List[int]]):
     f.close()
 
 if __name__ == '__main__':
-    # texts, patterns = read_all('run-configuration')
-    # solver = A2Solver(texts, patterns)
-    # compute_result = solver.compute_dl_for_all_pairs()
-    # write_to_file("output_a2.txt", compute_result)
-    
-    ukk = Ukkonen("aaabbbaabbabbbabba$")
-    ukk.print_tree()
-    # print(ukk.traverse_and_check_matches("aabcac"))
+    texts, patterns = read_all('run-configuration')
+    solver = A2Solver(texts, patterns)
+    compute_result = solver.compute_dl_for_all_pairs()
+    write_to_file("output_a2.txt", compute_result)

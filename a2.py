@@ -92,9 +92,13 @@ class Ukkonen:
         
         j = 0
         for i in range(n):
+            self.print_tree()
             global_end[0] = i
 
             while i - j + 1 > 0:
+                if n-1 == i == j:
+                    return root
+                self.print_tree()
                 if active_len == 0:
                     active_edge = active_node.edges[ord(text[i])]
                     if active_edge is None:
@@ -128,6 +132,7 @@ class Ukkonen:
 
                     if new_leaf_created:
                         prev_internal_node = None
+                        active_node = active_node.link
                         j += 1
                         continue
 
@@ -142,6 +147,8 @@ class Ukkonen:
                     # Resolve links
                     if prev_internal_node:
                         prev_internal_node.link = internal_node
+                    else:
+                        internal_node.link = root
                     prev_internal_node = internal_node
 
                 # At internal node and link found - jump using link
@@ -160,7 +167,6 @@ class Ukkonen:
                 # Still has active length to remove - set active edge
                 else:
                     active_edge = active_node.edges[ord(text[i - active_len])]
-                
                 j += 1
         return root
 
@@ -258,9 +264,11 @@ def write_to_file(result_file_path: str, content: List[List[int]]):
     f.close()
 
 if __name__ == '__main__':
-    texts, patterns = read_all('run-configuration')
-    solver = A2Solver(texts, patterns)
-    compute_result = solver.compute_dl_for_all_pairs()
-    write_to_file("output_a2.txt", compute_result)
-    # ukk = Ukkonen("aabcaba")
+    # texts, patterns = read_all('run-configuration')
+    # solver = A2Solver(texts, patterns)
+    # compute_result = solver.compute_dl_for_all_pairs()
+    # write_to_file("output_a2.txt", compute_result)
+    
+    ukk = Ukkonen("aaabbbaabbabbbabba$")
+    ukk.print_tree()
     # print(ukk.traverse_and_check_matches("aabcac"))

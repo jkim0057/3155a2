@@ -2,22 +2,36 @@ from typing import List
 import sys
 
 class Node:
-    def __init__(self, suffix_start_index=None) -> None:
+    def __init__(self, suffix_start_index=None, parent_start_index=None) -> None:
         self.edges = [None] * 128
         self.link = None
         self.suffix_start_index = suffix_start_index
+        self.parent_start_index = parent_start_index
 
 class Edge:
-    def __init__(self, target: Node, start:int, end, start_index_from_text=None) -> None:
+    def __init__(self, target: Node, start:int, end) -> None:
         self.start = start
         self.end = end
         self.target = target
-        self.start_index_from_text = start_index_from_text
 
 class Ukkonen:
     def __init__(self, text:str) -> None:
         self.text = text
         self.suffix_tree = self.generate_suffix_tree(text)
+
+    def print_tree(self):
+        def _print(node, indent=''):
+            for i in range(128):
+                edge = node.edges[i]
+                if edge:
+                    start = edge.start
+                    end = edge.end[0] if self.is_terminal_edge(edge) else edge.end
+                    label = self.text[start:end + 1]
+                    print(f"{indent}|-- {repr(label)}")
+                    _print(edge.target, indent + '    ')
+        print("Suffix Tree:")
+        _print(self.suffix_tree)
+        print('-' * 40)
 
     def is_terminal_edge(self, edge:Edge) -> bool:
         return edge.target.suffix_start_index is not None
@@ -31,17 +45,19 @@ class Ukkonen:
         return len
     
     def split_edge(self, active_node:Node, active_edge:Edge, active_len:int, i:int, j:int, global_end:List[int]):
+        parent_index = active_node.parent_start_index if active_node.parent_start_index else j
+        
         leaf = Node(suffix_start_index=j)
-        internal_node = Node()
-        rear_edge = Edge(internal_node, active_edge.start, active_edge.start + active_len - 1, start_index_from_text=None)
+        internal_node = Node(parent_start_index=parent_index)
+        rear_edge = Edge(internal_node, active_edge.start, active_edge.start + active_len - 1)
         active_node.edges[ord(self.text[rear_edge.start])] = rear_edge
-        internal_node.edges[ord(self.text[i])] = Edge(leaf, i, global_end, start_index_from_text=None)
+        internal_node.edges[ord(self.text[i])] = Edge(leaf, i, global_end)
         active_edge.start += active_len
         internal_node.edges[ord(self.text[active_edge.start])] = active_edge
 
         return internal_node
     
-    def traverse_and_check_matches(self, given_text: str) -> int:
+    def traverse_and_check_matches(self, given_text: str, return_start_index=False) -> int:
         i = 0
         past_edge_length = 0
         n = len(given_text)
@@ -51,19 +67,21 @@ class Ukkonen:
         current_edge = self.suffix_tree.edges[ord(given_text[i])]
         if not current_edge:
             return 0
+        start_index = None
         while i < n and self.text[current_edge.start + (i - past_edge_length)] == given_text[i]:
             current_edge_length = self.get_length(current_edge)
             if (i - past_edge_length + 1) == current_edge_length:
                 past_edge_length += current_edge_length
                 if i + 1 < n:
                     next_edge = current_edge.target.edges[ord(given_text[i + 1])]
+                    start_index = current_edge.target.parent_start_index if current_edge.target.parent_start_index else None
                     if next_edge:
                         current_edge = next_edge
                     else:
                         i += 1
                         break
             i += 1
-        return i
+        return i, start_index if return_start_index else i
     
     def generate_suffix_tree(self, text:str) -> Node:
         n = len(text)
@@ -87,7 +105,8 @@ class Ukkonen:
                     active_edge = active_node.edges[ord(text[i])]
                     if active_edge is None:
                         leaf = Node(suffix_start_index=j)
-                        active_node.edges[ord(text[i])] = Edge(leaf, i, global_end, start_index_from_text=i)
+                        active_node.edges[ord(text[i])] = Edge(leaf, i, global_end)
+                        active_node.parent_start_index = j
                         prev_internal_node = None
                         j += 1
                         continue
@@ -105,7 +124,7 @@ class Ukkonen:
                         # Case 1: no character found after a node
                         if active_edge is None:
                             leaf = Node(suffix_start_index=j)
-                            active_node.edges[ord(text[i])] = Edge(leaf, i, global_end, start_index_from_text=None)
+                            active_node.edges[ord(text[i])] = Edge(leaf, i, global_end)
                             new_leaf_created = True
                             break
                         # Case 2: exact node found with no remainder - set active_node only
@@ -172,7 +191,7 @@ class A2Solver:
         start_index = -1
         dl_distance = -1
         
-        match_count_left = text_tree.traverse_and_check_matches(pattern)
+        match_count_left, start_index = text_tree.traverse_and_check_matches(pattern, return_start_index=True)
         match_count_right = text_tree_rev.traverse_and_check_matches(pattern_rev)
 
         gap = len(pattern) - (match_count_left + match_count_right)
@@ -192,11 +211,13 @@ class A2Solver:
         else:
             dl_distance = -1
 
-        start_char = pattern[0]
-        if match_count_left <= 1 and dl_distance == 1:
-            start_char = pattern[1]
-        if dl_distance != -1:
-            start_index = text_tree.suffix_tree.edges[ord(start_char)].start_index_from_text
+
+
+        # start_char = pattern[0]
+        # if match_count_left <= 1 and dl_distance == 1:
+        #     start_char = pattern[1]
+        # if dl_distance != -1:
+        #     start_index = text_tree.suffix_tree.edges[ord(start_char)].start_index_from_text
 
         return start_index, dl_distance
     
@@ -252,5 +273,8 @@ def write_to_file(result_file_path: str, content: List[List[int]]):
 if __name__ == '__main__':
     texts, patterns = read_all('run-configuration')
     solver = A2Solver(texts, patterns)
-    compute_result = solver.compute_dl_for_all_pairs()
-    write_to_file("output_a2.txt", compute_result)
+    # compute_result = solver.compute_dl_for_all_pairs()
+    # write_to_file("output_a2.txt", compute_result)
+
+    print(solver.calculate_dl_distance(1, 1))
+    # solver.text_trees_rev[1].print_tree()

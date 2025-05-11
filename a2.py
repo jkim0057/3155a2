@@ -47,9 +47,9 @@ class Ukkonen:
     def split_edge(self, active_node:Node, active_edge:Edge, active_len:int, i:int, j:int, global_end:List[int]):
         leaf = Node(suffix_start_index=j)
         internal_node = Node()
-        rear_edge = Edge(internal_node, active_edge.start, active_edge.start + active_len - 1)
+        rear_edge = Edge(internal_node, active_edge.start, active_edge.start + active_len - 1, start_index_from_text=None)
         active_node.edges[ord(self.text[rear_edge.start])] = rear_edge
-        internal_node.edges[ord(self.text[i])] = Edge(leaf, i, global_end)
+        internal_node.edges[ord(self.text[i])] = Edge(leaf, i, global_end, start_index_from_text=None)
         active_edge.start += active_len
         internal_node.edges[ord(self.text[active_edge.start])] = active_edge
 
@@ -99,7 +99,7 @@ class Ukkonen:
                     active_edge = active_node.edges[ord(text[i])]
                     if active_edge is None:
                         leaf = Node(suffix_start_index=j)
-                        active_node.edges[ord(text[i])] = Edge(leaf, i, global_end, i)
+                        active_node.edges[ord(text[i])] = Edge(leaf, i, global_end, start_index_from_text=i)
                         prev_internal_node = None
                         j += 1
                         continue
@@ -117,9 +117,7 @@ class Ukkonen:
                         # Case 1: no character found after a node
                         if active_edge is None:
                             leaf = Node(suffix_start_index=j)
-                            active_node.edges[ord(text[i])] = Edge(leaf, i, global_end)
-                            prev_internal_node = None
-                            j += 1
+                            active_node.edges[ord(text[i])] = Edge(leaf, i, global_end, start_index_from_text=None)
                             new_leaf_created = True
                             break
                         # Case 2: exact node found with no remainder - set active_node only
@@ -129,6 +127,8 @@ class Ukkonen:
                         edge_len = self.get_length(active_edge)
 
                     if new_leaf_created:
+                        prev_internal_node = None
+                        j += 1
                         continue
 
                     # Rule 3: character found after traversal
@@ -200,6 +200,9 @@ class A2Solver:
         start_index = text_tree.suffix_tree.edges[ord(start_char)].start_index_from_text
 
         return start_index, dl_distance
+    
+    def compute_dl_for_all_files(self):
+        pass
 
 def read_all(config_file_path: str):
     f = open(config_file_path, 'r')
